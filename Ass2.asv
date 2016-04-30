@@ -162,7 +162,7 @@ FAM_XPosError_TruckAngleError = {'ZE','NS','NM','NM','NM';...
                                 'PM','PS','ZE','NS','NM';...
                                 'PM','PM','PS','ZE','NS';...
                                 'PM','PM','PM','PS','ZE'};
-                            
+                   
 cellfind = @(string)(@(cell_contents)(strcmp(string,cell_contents)));
 logical_col = cellfun(cellfind('NS'),setXPosError);
 logical_row = cellfun(cellfind('PS'),setTruckAngleError);
@@ -293,8 +293,8 @@ errorVec = zeros(numSamplingPoints,2);
 stateVec = zeros(numSamplingPoints,3);
 stateVec(1,:) = initialState;
 controlAngleTheta(1) = initialOutputAngle;
-errorVec(1,:) = [initialXPosError ...
-                 initialTruckAngleError];
+errorVec(1,:) = [checkInputRange(minXPosErrorRange,maxXPosErrorRange,xDesired - stateVec(1,X)) ...
+                 checkInputRange(minTruckAngleErrorRange,maxTruckAngleErrorRange,phiDesired - stateVec(1,PHI))];
 
 for i = 2:numSamplingPoints
     stateVec(i,:) = truckBackerUpperDynamics(stateVec(i-1,PHI),controlAngleTheta(i-1),stateVec(i-1,X),stateVec(i-1,Y));
@@ -359,7 +359,7 @@ subplot(2,1,1);plot(UCOA_Rule1_inputBreakPts,UCOA_Rule1_output,'b','linewidth',3
 grid on;
 title('MF1');
 
-UCOA_Rule2_inputBreakPts = [minControlAngleRange linearPosx(linearEqu([minControlAngleRange 0],[-10 1]),UCOA_vals(2)) linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(2)) 0];
+UCOA_Rule2_inputBreakPts = [minControlAngleRange linearPosx(linearEqu([minControlAngleRange 0],[-10 1]),UCOA_vals(2)) linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(2)) -1];
 UCOA_Rule2_output = [0 UCOA_vals(2) UCOA_vals(2) 0];
 
 for i = 1:numContOutputFuzzySets
@@ -373,21 +373,20 @@ grid on;
 title('MF2');
 
 figure;
-for i = 1:numContOutputFuzzySets
-str = setOutput{i};
-plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-text(contOutputTextXpos(i),1,str);
-hold on;
-end
-plot(UCOA_Rule1_inputBreakPts,UCOA_Rule1_output,'b','linewidth',3);
-
-for i = 1:numContOutputFuzzySets
-plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-hold on;
-end
-plot(UCOA_Rule2_inputBreakPts,UCOA_Rule2_output,'b','linewidth',3);
-grid on;
-
+% for i = 1:numContOutputFuzzySets
+% str = setOutput{i};
+% plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+% text(contOutputTextXpos(i),1,str);
+% hold on;
+% end
+% plot(UCOA_Rule1_inputBreakPts,UCOA_Rule1_output,'b','linewidth',3);
+% 
+% for i = 1:numContOutputFuzzySets
+% plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+% hold on;
+% end
+% plot(UCOA_Rule2_inputBreakPts,UCOA_Rule2_output,'b','linewidth',3);
+% 
 % for i = 1:numContOutputFuzzySets
 % plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
 % hold on;
@@ -401,48 +400,48 @@ grid on;
 % plot(UCOA_Rule4_inputBreakPts,UCOA_Rule4_output,'b','linewidth',3);
 % grid on;
 % 
-
-defuzz_output = [0 UCOA_vals(2) UCOA_vals(2) UCOA_vals(1) UCOA_vals(1) 0];
-defuzz_breakPts = [minControlAngleRange linearPosx(linearEqu([minControlAngleRange 0],[-10 1]),UCOA_vals(2)) linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(2)) ...
-                    linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(1)) linearPosx(linearEqu([0 1],[10 0]),UCOA_vals(1)) 10];
-                
-plot(defuzz_breakPts,defuzz_output,'--r','linewidth',3);
-grid on;
-title('Defuzzification');
-
-func1 = linearEqu([minControlAngleRange 0],[-10 1]);
-func2 = [0 UCOA_vals(2)];
-func3 = linearEqu([-10 1],[0 0]);
-func4 = [0 UCOA_vals(1)];
-func5 = linearEqu([0 1],[10 0]);
-
-defuzz_Funcs = [func1 func2 func3 func4 func5];
-areas = zeros(1,size(defuzz_breakPts,2)-1);
-moments = zeros(1,size(defuzz_breakPts,2)-1);
-
-fprintf('\n');
-disp('Defuzzification Piecewise Functions');
-for i = 1:(size(defuzz_breakPts,2)-1)
-    if(defuzz_Funcs(2*i-1) ~= 0)
-        fprintf('Function %d between  %g and %g is u(U) = %g*u + %g \n',i, defuzz_breakPts(i),defuzz_breakPts(i+1),defuzz_Funcs(2*i-1),defuzz_Funcs(2*i));
-    else
-        fprintf('Function %d between  %g and %g is u(U) = %g \n',i, defuzz_breakPts(i),defuzz_breakPts(i+1),defuzz_Funcs(2*i));
-    end        
-    areas(i) = integral(@(x)(defuzz_Funcs(2*i-1)*x + defuzz_Funcs(2*i)),defuzz_breakPts(i),defuzz_breakPts(i+1));
-    moments(i) = integral(@(x)(defuzz_Funcs(2*i-1)*(x.*x) + defuzz_Funcs(2*i)*x),defuzz_breakPts(i),defuzz_breakPts(i+1));
-    fprintf('Area %d = %g\n',i,areas(i));
-    fprintf('Moment %d = %g\n',i,moments(i));
-end
-
-fprintf('\nCOA Method (max-min) - Defuzzified Output for initialXPosError = %g, initialTruckAngleError = %g\n',initialXPosError,initialTruckAngleError);
-fprintf('Total Area = %g\n',sum(areas));
-fprintf('Total Moment = %g\n',sum(moments));
-outputAngle = sum(moments)/sum(areas);
-fprintf('Output control angle (theta) = %g deg\n',outputAngle);
-
-text(outputAngle,0.6,strcat('COA = ',num2str(outputAngle)));
-plot([outputAngle outputAngle],[0 1],'--g','linewidth',2);
-  
+% defuzz_output = [UCOA_vals(4) UCOA_vals(4) UCOA_vals(2) UCOA_vals(2) UCOA_vals(1) UCOA_vals(1) 0];
+% defuzz_breakPts = [-10 linearPosx(linearEqu([-9 1],[-5 0]),UCOA_vals(4)) linearPosx(linearEqu([-9 1],[-5 0]),UCOA_vals(2)) ...
+%                     linearPosx(linearEqu([-5 1],[-1 0]),UCOA_vals(2)) linearPosx(linearEqu([-5 1],[-1 0]),UCOA_vals(1)) linearPosx(linearEqu([0 1],[5 0]),UCOA_vals(1)) 5];
+%                 
+% plot(defuzz_breakPts,defuzz_output,'--r','linewidth',3);
+% grid on;
+% title('Defuzzification');
+% 
+% func1 = [0 UCOA_vals(4)];
+% func2 = linearEqu([-9 1],[-5 0]);
+% func3 = [0 UCOA_vals(2)];
+% func4 = linearEqu([-5 1],[-1 0]);
+% func5 = [0 UCOA_vals(1)];
+% func6 = linearEqu([0 1],[5 0]);
+% 
+% defuzz_Funcs = [func1 func2 func3 func4 func5 func6];
+% areas = zeros(1,size(defuzz_breakPts,2)-1);
+% moments = zeros(1,size(defuzz_breakPts,2)-1);
+% 
+% fprintf('\n');
+% disp('Defuzzification Piecewise Functions');
+% for i = 1:(size(defuzz_breakPts,2)-1)
+%     if(defuzz_Funcs(2*i-1) ~= 0)
+%         fprintf('Function %d between  %g and %g is u(U) = %g*u + %g \n',i, defuzz_breakPts(i),defuzz_breakPts(i+1),defuzz_Funcs(2*i-1),defuzz_Funcs(2*i));
+%     else
+%         fprintf('Function %d between  %g and %g is u(U) = %g \n',i, defuzz_breakPts(i),defuzz_breakPts(i+1),defuzz_Funcs(2*i));
+%     end        
+%     areas(i) = integral(@(x)(defuzz_Funcs(2*i-1)*x + defuzz_Funcs(2*i)),defuzz_breakPts(i),defuzz_breakPts(i+1));
+%     moments(i) = integral(@(x)(defuzz_Funcs(2*i-1)*(x.*x) + defuzz_Funcs(2*i)*x),defuzz_breakPts(i),defuzz_breakPts(i+1));
+%     fprintf('Area %d = %g\n',i,areas(i));
+%     fprintf('Moment %d = %g\n',i,moments(i));
+% end
+% 
+% fprintf('\nCOA Method (max-min) - Defuzzified Output for Error = %g, deltaError = %g\n',error,deltaError);
+% fprintf('Total Area = %g\n',sum(areas));
+% fprintf('Total Moment = %g\n',sum(moments));
+% outputVoltage = sum(moments)/sum(areas);
+% fprintf('Output voltage = %gV\n',outputVoltage);
+% text(outputVoltage,0.6,strcat('COA = ',num2str(outputVoltage)));
+% plot([outputVoltage outputVoltage],[0 1],'--g','linewidth',2);
+% 
+%     
 
 
 

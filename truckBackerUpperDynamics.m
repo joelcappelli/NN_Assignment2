@@ -3,6 +3,7 @@ function nextStates = truckBackerUpperDynamics(prevStatePhi,prevStateTheta,prevS
 X = 1;
 Y = 2;
 PHI = 3;
+nextStates = zeros(1,3);
 
 b = 4;
 nextStates(X) = prevStateX + cosd(prevStatePhi+prevStateTheta) + sind(prevStateTheta)*sind(prevStatePhi);

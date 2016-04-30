@@ -427,6 +427,7 @@ fprintf('\nMOM Method (sum-prod) - Defuzzified Output for Error = %g, deltaError
 outputVoltage = dot(UMOM_vals,[0 -5 -5 -9])/sum(UMOM_vals);
 fprintf('Output voltage = %gV\n',outputVoltage);
 
+
 fprintf('\n');
 disp('Fuzzification UCOA - max-min');
 for i = 1:size(UMOM_vals,2)
