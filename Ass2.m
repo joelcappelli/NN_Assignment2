@@ -7,6 +7,11 @@ clc;
 % Joel Cappelli
 % 12137384
 
+%check a few things
+%
+% - membership functions linear plot x interesection points, not clear in diagram
+% - truck position x error membership function, is that correct 0 - 20? so first error is -5, do we clip at 0
+
 %% Qu1
 x1 = [0.7826 0.5242];
 x2 = [0.9003 -0.5377];
@@ -85,7 +90,7 @@ figure;
 plot(Network.cycleErrors);
 title('Cycle Error');
 grid on;
-xlabel('Epoch');
+xlabel('Cycle');
 
 %write up feedforward function 
 xtest1 = [0.6263 -0.9803];
@@ -116,7 +121,7 @@ fprintf('classifyTV2 = \n');
 disp(output(2)');
 
 %% Qu 2
-fprintf('\nQu2.1 Fuzzy logic Controller\n\n');
+fprintf('\nQu2 Fuzzy logic Controller\n\n');
 X = 1;
 Y = 2;
 PHI = 3;
@@ -140,8 +145,8 @@ minControlAngleRange = -40;
 maxControlAngleRange = 40;
 maxOutput = 1;
 
-initialXPosError = checkInputRange(minXPosErrorRange,maxXPosErrorRange,xDesired - initialState(X));
-initialTruckAngleError = checkInputRange(minTruckAngleErrorRange,maxTruckAngleErrorRange,phiDesired - initialState(PHI));
+initialXPosError = initialState(X);%checkInputRange(minXPosErrorRange,maxXPosErrorRange,xDesired - initialState(X));
+initialTruckAngleError = initialState(PHI);%checkInputRange(minTruckAngleErrorRange,maxTruckAngleErrorRange,phiDesired - initialState(PHI));
 
 setXPosError = {'NM','NS','ZE','PS','PM'};
 truckAngleErrorTextXpos = [-60 70 90 110 240];%(minErrorRange - [-4 -0.8 0 0.8 4])./(minErrorRange-maxErrorRange);
@@ -262,82 +267,9 @@ end
 truckAngleErrorFuzzyified = fuzzifiedMemFunc(TruckAngleErrorFuzzySet_Funcs,TruckAngleErrorFuzzySet_output,TruckAngleErrorFuzzySet_inputBreakPts,initialTruckAngleError,maxTruckAngleError);
 xPosErrorFuzzyified = fuzzifiedMemFunc(xPosErrorFuzzySet_Funcs,xPosErrorFuzzySet_output,xPosErrorFuzzySet_inputBreakPts,initialXPosError,maxXPosError);
 
-UMOMoutputFiringRules = determineRules(xPosErrorFuzzyified,truckAngleErrorFuzzyified,'MOM-prod',setXPosError,setTruckAngleError,setOutput,FAM_XPosError_TruckAngleError);
+fprintf('Qu2.1 COA Strategy\n\n');
 UCOAoutputFiringRules = determineRules(xPosErrorFuzzyified,truckAngleErrorFuzzyified,'COA-min',setXPosError,setTruckAngleError,setOutput,FAM_XPosError_TruckAngleError);
-UMOM_crispVals = zeros(1,size(UMOMoutputFiringRules,2));
-for i = 1:size(UMOM_crispVals,2)
-    logical_row = cellfun(cellfind(UMOMoutputFiringRules{2,i}),contOutputFuzzySet_Funcs);
-    output = contOutputFuzzySet_output(logical_row);
-    inputBreakPts = contOutputFuzzySet_inputBreakPts(logical_row);
-    inputBreakPtsArray = inputBreakPts{:};
-    UMOM_crispVals(i) = mean(inputBreakPtsArray(find(output{:} ==1)));
-end
 
-disp('Fuzzification UMOM -prod');
-for i = 1:size(UMOMoutputFiringRules,2)
-    fprintf('Rule %d: %g/%s \n',i, UMOMoutputFiringRules{1,i},UMOMoutputFiringRules{2,i});
-end
-
-fprintf('\nMOM Method (prod) - Defuzzified Output for initialXPosError = %g, initialTruckAngleError = %g\n',initialXPosError,initialTruckAngleError);
-outputAngle = dot(cell2mat(UMOMoutputFiringRules(1,:)),UMOM_crispVals)/sum(cell2mat(UMOMoutputFiringRules(1,:)));
-fprintf('Output control angle (theta) = %g deg\n',outputAngle);
-
-numSamplingPoints = 100;
-% initialState = zeros(1,3);
-% initialState(X) = 15;
-% initialState(Y) = 15;
-% initialState(PHI) = 35;
-initialOutputAngle = 0;
-controlAngleTheta = zeros(numSamplingPoints,1);
-errorVec = zeros(numSamplingPoints,2);
-stateVec = zeros(numSamplingPoints,3);
-stateVec(1,:) = initialState;
-controlAngleTheta(1) = initialOutputAngle;
-errorVec(1,:) = [initialXPosError ...
-                 initialTruckAngleError];
-
-for i = 2:numSamplingPoints
-    stateVec(i,:) = truckBackerUpperDynamics(stateVec(i-1,PHI),controlAngleTheta(i-1),stateVec(i-1,X),stateVec(i-1,Y));
-    
-    XPosError = checkInputRange(minXPosErrorRange,maxXPosErrorRange,xDesired - stateVec(i,X));
-    TruckAngleError = checkInputRange(minTruckAngleErrorRange,maxTruckAngleErrorRange,phiDesired - stateVec(i,PHI));
-    errorVec(i,:) = [XPosError TruckAngleError];
-    
-    truckAngleErrorFuzzyified = fuzzifiedMemFunc(TruckAngleErrorFuzzySet_Funcs,TruckAngleErrorFuzzySet_output,TruckAngleErrorFuzzySet_inputBreakPts,TruckAngleError,maxTruckAngleError);
-    xPosErrorFuzzyified = fuzzifiedMemFunc(xPosErrorFuzzySet_Funcs,xPosErrorFuzzySet_output,xPosErrorFuzzySet_inputBreakPts,XPosError,maxXPosError);
-
-    UMOMoutputFiringRules = determineRules(xPosErrorFuzzyified,truckAngleErrorFuzzyified,'MOM-prod',setXPosError,setTruckAngleError,setOutput,FAM_XPosError_TruckAngleError);
-    UMOM_crispVals = zeros(1,size(UMOMoutputFiringRules,2));
-    for j = 1:size(UMOM_crispVals,2)
-        logical_row = cellfun(cellfind(UMOMoutputFiringRules{2,j}),contOutputFuzzySet_Funcs);
-        output = contOutputFuzzySet_output(logical_row);
-        inputBreakPts = contOutputFuzzySet_inputBreakPts(logical_row);
-        inputBreakPtsArray = inputBreakPts{:};
-        UMOM_crispVals(j) = mean(inputBreakPtsArray(find(output{:} ==1)));
-    end
-
-    controlAngleTheta(i) = dot(cell2mat(UMOMoutputFiringRules(1,:)),UMOM_crispVals)/sum(cell2mat(UMOMoutputFiringRules(1,:)));
-end
-
-figure;
-subplot(2,1,1);plot(stateVec(:,X),stateVec(:,Y),'r*');
-grid on;
-xlabel('X');
-ylabel('Y');
-subplot(2,1,2);plot(controlAngleTheta,'b*');
-xlabel('Sample Point');
-ylabel('theta (deg)');
-grid on;
-
-figure;
-subplot(2,1,1);plot(errorVec(:,X),'r*');
-grid on;
-xlabel('X error');
-subplot(2,1,2);plot(errorVec(:,2),'b*');
-xlabel('Truck Angle error');
-grid on;
-
-fprintf('\n');
 disp('Fuzzification UCOA - min');
 for i = 1:size(UCOAoutputFiringRules,2)
     fprintf('Rule %d: %g/%s \n',i, UCOAoutputFiringRules{1,i},UCOAoutputFiringRules{2,i});
@@ -345,32 +277,58 @@ end
 
 UCOA_vals = cell2mat(UCOAoutputFiringRules(1,:));
 
-UCOA_Rule1_inputBreakPts = [-10 linearPosx(linearEqu([-10 0],[0 1]),UCOA_vals(1)) linearPosx(linearEqu([0 1],[10 0]),UCOA_vals(1)) 10];
-UCOA_Rule1_output = [0 UCOA_vals(1) UCOA_vals(1) 0];
+UCOA_Rule1_inputBreakPts = [minControlAngleRange 10 linearPosx(linearEqu([10 0],[maxControlAngleRange 1]),UCOA_vals(1)) maxControlAngleRange];
+UCOA_Rule1_output = [0 0 UCOA_vals(1) UCOA_vals(1)];
 
 figure;
 for i = 1:numContOutputFuzzySets
 str = setOutput{i};
-subplot(2,1,1);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-subplot(2,1,1);text(contOutputTextXpos(i),1,str);
+subplot(2,2,1);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+subplot(2,2,1);text(contOutputTextXpos(i),1,str);
 hold on;
 end
-subplot(2,1,1);plot(UCOA_Rule1_inputBreakPts,UCOA_Rule1_output,'b','linewidth',3);
+subplot(2,2,1);plot(UCOA_Rule1_inputBreakPts,UCOA_Rule1_output,'b','linewidth',3);
 grid on;
 title('MF1');
 
-UCOA_Rule2_inputBreakPts = [minControlAngleRange linearPosx(linearEqu([minControlAngleRange 0],[-10 1]),UCOA_vals(2)) linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(2)) 0];
-UCOA_Rule2_output = [0 UCOA_vals(2) UCOA_vals(2) 0];
+UCOA_Rule2_inputBreakPts = [minControlAngleRange 10 linearPosx(linearEqu([10 0],[maxControlAngleRange 1]),UCOA_vals(2)) maxControlAngleRange];
+UCOA_Rule2_output = [0 0 UCOA_vals(2) UCOA_vals(2)];
 
 for i = 1:numContOutputFuzzySets
 str = setOutput{i};
-subplot(2,1,2);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-subplot(2,1,2);text(contOutputTextXpos(i),1,str);
+subplot(2,2,2);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+subplot(2,2,2);text(contOutputTextXpos(i),1,str);
 hold on;
 end
-subplot(2,1,2);plot(UCOA_Rule2_inputBreakPts,UCOA_Rule2_output,'b','linewidth',3);
+subplot(2,2,2);plot(UCOA_Rule2_inputBreakPts,UCOA_Rule2_output,'b','linewidth',3);
 grid on;
 title('MF2');
+
+UCOA_Rule3_inputBreakPts = [minControlAngleRange 10 linearPosx(linearEqu([10 0],[maxControlAngleRange 1]),UCOA_vals(3)) maxControlAngleRange];
+UCOA_Rule3_output = [0 0 UCOA_vals(3) UCOA_vals(3)];
+
+for i = 1:numContOutputFuzzySets
+str = setOutput{i};
+subplot(2,2,3);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+subplot(2,2,3);text(contOutputTextXpos(i),1,str);
+hold on;
+end
+subplot(2,2,3);plot(UCOA_Rule3_inputBreakPts,UCOA_Rule3_output,'b','linewidth',3);
+grid on;
+title('MF3');
+
+UCOA_Rule4_inputBreakPts = [minControlAngleRange 10 linearPosx(linearEqu([10 0],[maxControlAngleRange 1]),UCOA_vals(4)) maxControlAngleRange];
+UCOA_Rule4_output = [0 0 UCOA_vals(4) UCOA_vals(4)];
+
+for i = 1:numContOutputFuzzySets
+str = setOutput{i};
+subplot(2,2,4);plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+subplot(2,2,4);text(contOutputTextXpos(i),1,str);
+hold on;
+end
+subplot(2,2,4);plot(UCOA_Rule4_inputBreakPts,UCOA_Rule4_output,'b','linewidth',3);
+grid on;
+title('MF4');
 
 figure;
 for i = 1:numContOutputFuzzySets
@@ -388,35 +346,35 @@ end
 plot(UCOA_Rule2_inputBreakPts,UCOA_Rule2_output,'b','linewidth',3);
 grid on;
 
-% for i = 1:numContOutputFuzzySets
-% plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-% hold on;
-% end
-% plot(UCOA_Rule3_inputBreakPts,UCOA_Rule3_output,'b','linewidth',3);
-% 
-% for i = 1:numContOutputFuzzySets
-% plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
-% hold on;
-% end
-% plot(UCOA_Rule4_inputBreakPts,UCOA_Rule4_output,'b','linewidth',3);
-% grid on;
-% 
+for i = 1:numContOutputFuzzySets
+plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+hold on;
+end
+plot(UCOA_Rule3_inputBreakPts,UCOA_Rule3_output,'b','linewidth',3);
 
-defuzz_output = [0 UCOA_vals(2) UCOA_vals(2) UCOA_vals(1) UCOA_vals(1) 0];
-defuzz_breakPts = [minControlAngleRange linearPosx(linearEqu([minControlAngleRange 0],[-10 1]),UCOA_vals(2)) linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(2)) ...
-                    linearPosx(linearEqu([-10 1],[0 0]),UCOA_vals(1)) linearPosx(linearEqu([0 1],[10 0]),UCOA_vals(1)) 10];
-                
+for i = 1:numContOutputFuzzySets
+plot(contOutputFuzzySet_inputBreakPts{i},contOutputFuzzySet_output{i},'b');
+hold on;
+end
+plot(UCOA_Rule4_inputBreakPts,UCOA_Rule4_output,'b','linewidth',3);
+grid on;
+
+defuzz_output = [0 UCOA_vals(2) UCOA_vals(2)];
+defuzz_breakPts = [10 linearPosx(linearEqu([10 0],[maxControlAngleRange 1]),UCOA_vals(2)) maxControlAngleRange];
+
 plot(defuzz_breakPts,defuzz_output,'--r','linewidth',3);
 grid on;
 title('Defuzzification');
 
-func1 = linearEqu([minControlAngleRange 0],[-10 1]);
+% y = mx + b 
+% [m b]
+func1 = linearEqu([10 0],[maxControlAngleRange 1]);
 func2 = [0 UCOA_vals(2)];
-func3 = linearEqu([-10 1],[0 0]);
-func4 = [0 UCOA_vals(1)];
-func5 = linearEqu([0 1],[10 0]);
+% func3 = linearEqu([-10 1],[0 0]);
+% func4 = [0 UCOA_vals(1)];
+% func5 = linearEqu([0 1],[10 0]);
 
-defuzz_Funcs = [func1 func2 func3 func4 func5];
+defuzz_Funcs = [func1 func2];
 areas = zeros(1,size(defuzz_breakPts,2)-1);
 moments = zeros(1,size(defuzz_breakPts,2)-1);
 
@@ -438,11 +396,77 @@ fprintf('\nCOA Method (max-min) - Defuzzified Output for initialXPosError = %g, 
 fprintf('Total Area = %g\n',sum(areas));
 fprintf('Total Moment = %g\n',sum(moments));
 outputAngle = sum(moments)/sum(areas);
-fprintf('Output control angle (theta) = %g deg\n',outputAngle);
+fprintf('Output control angle (theta) = %g deg\n\n',outputAngle);
 
 text(outputAngle,0.6,strcat('COA = ',num2str(outputAngle)));
 plot([outputAngle outputAngle],[0 1],'--g','linewidth',2);
   
+fprintf('\nQu2.2 MOM Strategy\n');
+
+numSamplingPoints = 100;
+% initialState = zeros(1,3);
+% initialState(X) = 15;
+% initialState(Y) = 15;
+% initialState(PHI) = 35;
+initialOutputAngle = 0;
+controlAngleTheta = zeros(numSamplingPoints,1);
+errorVec = zeros(numSamplingPoints,2);
+stateVec = zeros(numSamplingPoints,3);
+stateVec(1,:) = initialState;
+
+for i = 1:(numSamplingPoints-1)
+    
+    XPosError = checkInputRange(minXPosErrorRange,maxXPosErrorRange,stateVec(i,X));
+    TruckAngleError = checkInputRange(minTruckAngleErrorRange,maxTruckAngleErrorRange,stateVec(i,PHI));
+    errorVec(i,:) = [xDesired - XPosError,phiDesired - TruckAngleError];
+    
+    truckAngleErrorFuzzyified = fuzzifiedMemFunc(TruckAngleErrorFuzzySet_Funcs,TruckAngleErrorFuzzySet_output,TruckAngleErrorFuzzySet_inputBreakPts,TruckAngleError,maxTruckAngleError);
+    xPosErrorFuzzyified = fuzzifiedMemFunc(xPosErrorFuzzySet_Funcs,xPosErrorFuzzySet_output,xPosErrorFuzzySet_inputBreakPts,XPosError,maxXPosError);
+
+    UMOMoutputFiringRules = determineRules(xPosErrorFuzzyified,truckAngleErrorFuzzyified,'MOM-prod',setXPosError,setTruckAngleError,setOutput,FAM_XPosError_TruckAngleError);
+    UMOM_crispVals = zeros(1,size(UMOMoutputFiringRules,2));
+    for j = 1:size(UMOM_crispVals,2)
+        logical_row = cellfun(cellfind(UMOMoutputFiringRules{2,j}),contOutputFuzzySet_Funcs);
+        output = contOutputFuzzySet_output(logical_row);
+        inputBreakPts = contOutputFuzzySet_inputBreakPts(logical_row);
+        inputBreakPtsArray = inputBreakPts{:};
+        UMOM_crispVals(j) = mean(inputBreakPtsArray(find(output{:} ==1)));
+    end
+
+    controlAngleTheta(i) = dot(cell2mat(UMOMoutputFiringRules(1,:)),UMOM_crispVals)/sum(cell2mat(UMOMoutputFiringRules(1,:)));
+    stateVec(i+1,:) = truckBackerUpperDynamics(stateVec(i,PHI),controlAngleTheta(i),stateVec(i,X),stateVec(i,Y));
+
+    if(i==1 || i ==2)
+        disp(strcat('Fuzzification UMOM -prod: State: ',num2str(i)));
+        for j = 1:size(UMOMoutputFiringRules,2)
+            fprintf('Rule %d: %g/%s \n',j, UMOMoutputFiringRules{1,j},UMOMoutputFiringRules{2,j});
+        end
+
+        fprintf('MOM Method (prod) - Defuzzified Output for xPosError = %g deg, truckAngleError = %g deg\n',XPosError,TruckAngleError);
+        fprintf('Output control angle (theta) = %g deg\n\n',controlAngleTheta(i));
+    end
+
+end
+
+figure;
+subplot(2,1,1);plot(stateVec(:,X),stateVec(:,Y),'r*');
+grid on;
+xlabel('X');
+ylabel('Y');
+subplot(2,1,2);plot(controlAngleTheta,'b*');
+xlabel('Sample Point');
+ylabel('theta (deg)');
+grid on;
+
+figure;
+subplot(2,1,1);plot(errorVec(:,X),'r*');
+grid on;
+ylabel('X error');
+xlabel('Sample Point');
+subplot(2,1,2);plot(errorVec(:,2),'b*');
+ylabel('Truck Angle error');
+xlabel('Sample Point');
+grid on;
 
 
 
