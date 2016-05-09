@@ -16,7 +16,7 @@ hold on;
 end
 subplot(3,1,1);plot([initialTruckAngleError initialTruckAngleError],[0 1],'--r','linewidth',2);
 grid on;
-ylabel('Truck Angle (_Phi deg)');
+ylabel('Truck Angle (\phi deg)');
 
 for i = 1:numxPosErrorFuzzySets
 str = setXPosError{i};
@@ -26,7 +26,7 @@ hold on;
 end 
 subplot(3,1,2);plot([initialXPosError initialXPosError],[0 1],'--k','linewidth',2);
 grid on;
-ylabel('X Position Error (m)');
+ylabel('Position (x metres)');
 
 for i = 1:numContOutputFuzzySets
 str = setOutput{i};
@@ -35,7 +35,7 @@ subplot(3,1,3);text(contOutputTextXpos(i),1,str);
 hold on;
 end
 grid on;
-ylabel('Controller Angle (_theta deg)');
+ylabel('Control Angle (\theta deg)');
  
                             
 end

@@ -92,6 +92,12 @@ title('Cycle Error');
 grid on;
 xlabel('Cycle');
 
+figure;
+plot(Network.patternErrors);
+title('Pattern Errors');
+grid on;
+xlabel('Pattern');
+
 %write up feedforward function 
 xtest1 = [0.6263 -0.9803];
 xtest2 = [0.0700 0.0500];
@@ -104,6 +110,8 @@ testX = [settestX augInput*ones(size(settestX,1),1)];
 
 testD = [sign(prod(xtest1));sign(prod(xtest2))];
 output = feedfwdMLP(testX,L,Network.weights,fnHandles,hiddenBias);
+
+fprintf('Classification after 4000 steps (500 cycles):\n');
 
 fprintf('xTV1 = \n');
 disp(xtest1');
@@ -119,6 +127,46 @@ fprintf('outputTrueTV2 = \n');
 disp(testD(2)');
 fprintf('classifyTV2 = \n');
 disp(output(2)');
+
+% maxNumEpochs = 2000;
+% Network = backpropNN(L,n,m,smse,X,D,fnHandles,maxNumEpochs,plotFig,hiddenBias,initWeights);
+% 
+% fprintf('Weights after 16000 steps (2000 cycles):\n');
+% fprintf('Wbar(16001) = \n');
+% disp(Network.weights{1});
+% fprintf('W(16001) = \n');
+% disp(Network.weights{2});
+% 
+% figure;
+% plot(Network.cycleErrors);
+% title('Cycle Error');
+% grid on;
+% xlabel('Cycle');
+% 
+% figure;
+% plot(Network.patternErrors);
+% title('Pattern Errors');
+% grid on;
+% xlabel('Pattern');
+% 
+% output = feedfwdMLP(testX,L,Network.weights,fnHandles,hiddenBias);
+% 
+% fprintf('Classification after 16000 steps (2000 cycles):\n');
+% 
+% fprintf('xTV1 = \n');
+% disp(xtest1');
+% fprintf('xTV2 = \n');
+% disp(xtest2');
+% 
+% fprintf('outputTrueTV1 = \n');
+% disp(testD(1)');
+% fprintf('classifyTV1 = \n');
+% disp(output(1)');
+% 
+% fprintf('outputTrueTV2 = \n');
+% disp(testD(2)');
+% fprintf('classifyTV2 = \n');
+% disp(output(2)');
 
 %% Qu 2
 fprintf('\nQu2 Fuzzy logic Controller\n\n');
@@ -458,22 +506,29 @@ for i = 1:(numSamplingPoints-1)
 end
 
 figure;
-subplot(2,1,1);plot(stateVec(:,X),stateVec(:,Y),'r*');
+h1 = plot(stateVec(1,X),stateVec(1,Y),'rd');
+hold on;
+plot(stateVec(2:end,X),stateVec(2:end,Y),'r*');
 grid on;
-xlabel('X');
-ylabel('Y');
-subplot(2,1,2);plot(controlAngleTheta,'b*');
+title('Truck position');
+xlabel('X position');
+ylabel('Y position');
+legend([h1],'Starting Point');
+grid on;
+
+figure;
+plot(controlAngleTheta,'b*');
 xlabel('Sample Point');
-ylabel('theta (deg)');
+ylabel('Control Angle (\theta deg)');
 grid on;
 
 figure;
 subplot(2,1,1);plot(errorVec(:,X),'r*');
 grid on;
-ylabel('X error');
+ylabel('X Position Error (m)');
 xlabel('Sample Point');
 subplot(2,1,2);plot(errorVec(:,2),'b*');
-ylabel('Truck Angle error');
+ylabel('Truck Angle Error (\phi deg)');
 xlabel('Sample Point');
 grid on;
 
