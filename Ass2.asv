@@ -132,7 +132,7 @@ figure;
 plot([0 0],[-1 1],'k');
 hold on;
 plot([-1 1],[0 0],'k');
-p1=plot(setX(:,1),setX(:,2),'mo','MarkerFaceColor','m','MarkerSize',10);
+p1=plot(setX(:,1),setX(:,2),'ro','MarkerFaceColor','r','MarkerSize',10);
 hold on;
 p2=plot(settestX(:,1),settestX(:,2),'bo','MarkerFaceColor','b','MarkerSize',10);
 text(0.5,0.5,'\bf 1','Color','Green','FontSize',15);
